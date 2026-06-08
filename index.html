@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Plan Kar  — Event Planner</title>
+<script src="config.js" onerror="console.warn('config.js not found')"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  window.__firebase = { initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, getFirestore, doc, setDoc, getDoc, serverTimestamp };
+</script>
+<style>
+:root {
+  --bg:#09090f; --surface:#111118; --surface2:#18181f; --surface3:#20202a;
+  --border:#28283a; --border2:#32324a;
+  --text:#eeeeff; --text2:#9d9bc4; --text3:#5e5c88;
+  --accent:#7c6dfa; --accent2:#fa6d9f; --accent3:#6dfabc;
+  --font-d:'Playfair Display',serif; --font-b:'DM Sans',sans-serif; --font-m:'Space Mono',monospace;
+  --r:14px; --r2:20px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height:100vh;overflow-x:hidden}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ─── AUTH ─── */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.auth-orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:44px 40px;width:420px;max-width:94vw;position:relative;z-index:1;animation:scaleIn .35s ease;box-shadow:0 32px 80px rgba(0,0,0,.55)}
+.auth-logo{font-family:var(--font-d);font-size:1.9rem;font-weight:900;text-align:center;margin-bottom:4px;background:linear-gradient(135deg,#fa6d9f,#7c6dfa,#6dfabc);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.auth-sub{text-align:center;font-size:.8rem;color:var(--text3);margin-bottom:28px}
+.auth-tabs{display:flex;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:24px;gap:4px}
+.auth-tab{flex:1;padding:9px;border:none;background:transparent;color:var(--text3);font-family:var(--font-b);font-size:.88rem;font-weight:500;border-radius:9px;cursor:pointer;transition:all .18s}
+.auth-tab.on{background:var(--surface3);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.auth-f{margin-bottom:14px}
+.auth-f label{display:block;font-size:.73rem;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+.auth-f input{width:100%;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-b);font-size:.93rem;outline:none;transition:border-color .18s,box-shadow .18s}
+.auth-f input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,109,250,.15)}
+.auth-btn{width:100%;padding:13px;margin-top:6px;border:none;border-radius:11px;cursor:pointer;font-family:var(--font-b);font-size:.95rem;font-weight:600;background:linear-gradient(135deg,#7c6dfa,#fa6d9f);color:#fff;transition:all .2s;box-shadow:0 4px 20px rgba(124,109,250,.3)}
+.auth-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(124,109,250,.4)}
+.auth-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.auth-err{background:rgba(250,100,100,.12);border:1px solid rgba(250,100,100,.25);border-radius:9px;padding:9px 13px;font-size:.83rem;color:#ffaaaa;margin-bottom:14px}
+.setup-note{margin-top:20px;padding:14px;background:rgba(124,109,250,.07);border-radius:11px;border:1px solid rgba(124,109,250,.18)}
+.setup-note h4{font-size:.75rem;color:#a89dfa;font-weight:700;margin-bottom:5px}
+.setup-note p{font-size:.73rem;color:var(--text3);line-height:1.6}
+.setup-note a{color:var(--accent);text-decoration:none}
+
+/* ─── LAYOUT ─── */
+.app{display:flex;min-height:100vh}
+
+/* ─── SIDEBAR ─── */
+.sidebar{width:260px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex-shrink:0}
+.sb-top{padding:22px 18px 16px;border-bottom:1px solid var(--border)}
+.sb-logo{font-family:var(--font-d);font-size:1.45rem;font-weight:900;background:linear-gradient(135deg,#fa6d9f,#7c6dfa,#6dfabc);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:14px}
+.sb-event-name{cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:700;font-size:1rem;color:var(--text)}
+.sb-event-name:hover .edit-hint{opacity:1}
+.edit-hint{opacity:0;font-size:.7rem;color:var(--text3);transition:.18s}
+.sb-name-input{width:100%;padding:7px 10px;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;color:var(--text);font-family:var(--font-b);font-size:.95rem;font-weight:700;outline:none}
+.sb-dates-label{font-size:.72rem;color:var(--text3);font-family:var(--font-m);margin-top:3px}
+
+.sb-nav-label{font-size:.65rem;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--text3);padding:14px 18px 6px}
+.sb-nav{flex:1;overflow-y:auto;padding:0 8px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:all .18s;margin-bottom:1px}
+.sb-item:hover{background:var(--surface2)}
+.sb-item.active{background:var(--surface3)}
+.sb-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;transition:box-shadow .18s}
+.sb-item.active .sb-dot{box-shadow:0 0 8px var(--dot-color,#7c6dfa)}
+.sb-item-label{font-size:.83rem;font-weight:500;color:var(--text2);flex:1}
+.sb-item.active .sb-item-label{color:var(--text)}
+.sb-count{font-size:.68rem;font-family:var(--font-m);background:var(--surface2);padding:1px 6px;border-radius:20px;color:var(--text3)}
+
+.sb-bottom{padding:12px 8px;border-top:1px solid var(--border)}
+.sb-btn{width:100%;padding:10px 14px;border:none;border-radius:9px;cursor:pointer;font-family:var(--font-b);font-size:.83rem;font-weight:600;display:flex;align-items:center;gap:9px;margin-bottom:4px;transition:all .18s;background:transparent;color:var(--text2);text-align:left}
+.sb-btn:hover{background:var(--surface2);color:var(--text)}
+.sb-btn.cal{color:#7c6dfa}.sb-btn.cal:hover{background:rgba(124,109,250,.1)}
+.sb-btn.notes{color:#ffd93d}.sb-btn.notes:hover{background:rgba(255,217,61,.1)}
+.sb-btn.logout{color:#fa6d6d}.sb-btn.logout:hover{background:rgba(250,109,109,.1)}
+.sb-user{display:flex;align-items:center;gap:9px;padding:8px 10px 10px}
+.sb-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#7c6dfa,#fa6d9f);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0}
+.sb-uname{font-size:.8rem;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ─── MAIN ─── */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* ─── CALENDAR VIEW ─── */
+.cal-view{padding:32px 36px;animation:fadeUp .35s ease}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.cal-title{font-family:var(--font-d);font-size:2rem;font-weight:900;letter-spacing:-1px}
+.cal-title span{color:var(--text3);font-size:1.2rem;font-weight:400;margin-left:8px}
+.cal-controls{display:flex;gap:10px;align-items:center}
+.cal-icon-btn{padding:9px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text2);font-family:var(--font-b);font-size:.83rem;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:6px}
+.cal-icon-btn:hover{background:var(--surface3);color:var(--text);border-color:var(--border2)}
+.cal-icon-btn.primary{background:linear-gradient(135deg,#7c6dfa,#fa6d9f);border:none;color:#fff}
+.cal-icon-btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,109,250,.35)}
+
+/* calendar grid */
+.cal-month-label{font-family:var(--font-m);font-size:.75rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding:0 2px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:24px}
+.cal-weekday{text-align:center;font-size:.7rem;font-family:var(--font-m);color:var(--text3);padding:4px 0 10px;font-weight:700;letter-spacing:.5px}
+.cal-cell{position:relative;aspect-ratio:1;border-radius:12px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .2s;overflow:hidden;display:flex;flex-direction:column;padding:8px;min-height:80px}
+.cal-cell.empty{background:transparent;border-color:transparent;cursor:default;pointer-events:none}
+.cal-cell.in-range:hover{transform:scale(1.03);border-color:var(--border2);box-shadow:0 4px 20px rgba(0,0,0,.35)}
+.cal-cell.in-range{cursor:pointer}
+.cal-cell.active-day{border-color:var(--accent)!important;box-shadow:0 0 0 2px rgba(124,109,250,.3)}
+.cal-cell-top{display:flex;align-items:flex-start;justify-content:space-between}
+.cal-day-num{font-family:var(--font-m);font-size:.85rem;font-weight:700;color:var(--text2)}
+.cal-cell.in-range .cal-day-num{color:var(--text)}
+.cal-color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;cursor:pointer;transition:transform .15s;border:1.5px solid rgba(255,255,255,.15)}
+.cal-color-dot:hover{transform:scale(1.3)}
+.cal-entry-chips{display:flex;flex-direction:column;gap:3px;margin-top:6px;overflow:hidden}
+.cal-chip{font-size:.62rem;padding:2px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;opacity:.9}
+.cal-more{font-size:.62rem;color:var(--text3);font-family:var(--font-m);margin-top:2px}
+.cal-cell-footer{margin-top:auto;font-size:.65rem;color:var(--text3);font-family:var(--font-m)}
+.out-range-label{font-size:.6rem;color:var(--text3);margin-top:auto;opacity:.5}
+
+/* color picker popover */
+.color-pop{position:absolute;top:28px;right:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:10px;z-index:100;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;box-shadow:0 8px 32px rgba(0,0,0,.5);animation:popIn .15s ease}
+.color-swatch{width:18px;height:18px;border-radius:50%;cursor:pointer;transition:transform .15s;border:1.5px solid rgba(255,255,255,.1)}
+.color-swatch:hover{transform:scale(1.25)}
+.color-swatch.picked{border-color:#fff;transform:scale(1.2)}
+
+/* ─── DAY VIEW ─── */
+.day-view{padding:32px 36px;animation:fadeUp .3s ease;flex:1}
+.dv-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+.dv-back{padding:9px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text2);font-family:var(--font-b);font-size:.83rem;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:6px}
+.dv-back:hover{background:var(--surface3);color:var(--text)}
+.dv-title-area{}
+.dv-date{font-family:var(--font-d);font-size:2.4rem;font-weight:900;letter-spacing:-2px;line-height:1.1}
+.dv-sub{font-size:.8rem;color:var(--text3);font-family:var(--font-m);margin-top:3px}
+.dv-num{font-family:var(--font-m);font-size:3.5rem;font-weight:700;color:var(--border);letter-spacing:-3px;user-select:none;line-height:1}
+
+/* day color bar */
+.dv-colorbar{height:4px;border-radius:4px;margin-bottom:22px;transition:background .3s}
+
+/* add bar */
+.add-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:18px;margin-bottom:18px}
+.type-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.type-chip{padding:6px 13px;border-radius:20px;border:1px solid var(--border);font-size:.76rem;font-weight:600;cursor:pointer;transition:all .18s;background:transparent;color:var(--text3)}
+.type-chip:hover{border-color:var(--border2);color:var(--text2)}
+.type-chip.on{border-color:transparent}
+.input-row{display:flex;gap:9px}
+.entry-input{flex:1;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-b);font-size:.92rem;outline:none;transition:border-color .18s}
+.entry-input:focus{border-color:var(--accent)}
+.add-entry-btn{padding:10px 20px;border:none;border-radius:10px;cursor:pointer;font-family:var(--font-b);font-size:.88rem;font-weight:600;background:linear-gradient(135deg,#7c6dfa,#6dfabc);color:#fff;white-space:nowrap;transition:all .2s}
+.add-entry-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,109,250,.3)}
+.link-extra{display:flex;gap:8px;margin-top:10px}
+.link-input{flex:1;padding:9px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.85rem;font-family:var(--font-b);outline:none;transition:border-color .18s}
+.link-input:focus{border-color:#4d9de0}
+
+/* entries */
+.entries{display:flex;flex-direction:column;gap:10px}
+.entry-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:15px 17px;display:flex;align-items:flex-start;gap:12px;animation:slideIn .25s ease;transition:all .18s;position:relative;overflow:hidden}
+.entry-card:hover{border-color:var(--border2);transform:translateX(3px)}
+.entry-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.entry-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.entry-body{flex:1;min-width:0}
+.entry-text{font-size:.92rem;font-weight:500;color:var(--text);line-height:1.5;word-break:break-word}
+.entry-text a{color:#4d9de0;text-decoration:none}
+.entry-text a:hover{text-decoration:underline}
+.entry-link-pill{display:inline-flex;align-items:center;gap:5px;font-size:.77rem;color:#4d9de0;margin-top:5px;text-decoration:none;border:1px solid rgba(77,157,224,.25);padding:3px 10px;border-radius:20px;transition:all .18s}
+.entry-link-pill:hover{background:rgba(77,157,224,.1)}
+.entry-meta{font-size:.7rem;color:var(--text3);margin-top:3px;font-family:var(--font-m)}
+.entry-actions{display:flex;gap:3px;opacity:0;transition:.18s;flex-shrink:0}
+.entry-card:hover .entry-actions{opacity:1}
+.ea-btn{width:27px;height:27px;border-radius:7px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8rem;background:var(--surface2);color:var(--text3);transition:all .18s}
+.ea-btn:hover{background:var(--surface3);color:var(--text)}
+.ea-btn.del:hover{color:#fa6d6d;background:rgba(250,109,109,.1)}
+.edit-input{width:100%;padding:7px 11px;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;color:var(--text);font-family:var(--font-b);font-size:.9rem;outline:none;margin-bottom:6px}
+.edit-btns{display:flex;gap:6px}
+.edit-save{padding:6px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;background:var(--accent);color:#fff}
+.edit-cancel{padding:6px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;background:var(--surface3);color:var(--text2)}
+
+/* empty */
+.empty{text-align:center;padding:56px 20px;animation:fadeUp .4s ease}
+.empty-icon{font-size:2.4rem;margin-bottom:14px;display:block}
+.empty-t{font-family:var(--font-d);font-size:1.3rem;font-weight:700;color:var(--text2);margin-bottom:6px}
+.empty-s{font-size:.87rem;color:var(--text3)}
+
+/* ─── MODALS ─── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:1000;animation:fadeIn .2s ease;padding:20px}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:30px;width:580px;max-width:100%;max-height:88vh;display:flex;flex-direction:column;animation:scaleIn .28s ease;box-shadow:0 32px 80px rgba(0,0,0,.6)}
+.modal-sm{width:440px}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-family:var(--font-d);font-size:1.4rem;font-weight:700}
+.modal-close{width:34px;height:34px;border-radius:9px;border:none;cursor:pointer;background:var(--surface2);color:var(--text3);font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .18s}
+.modal-close:hover{background:var(--surface3);color:var(--text)}
+.notes-ta{flex:1;min-height:180px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;color:var(--text);font-family:var(--font-b);font-size:.92rem;line-height:1.7;outline:none;resize:vertical;transition:border-color .18s}
+.notes-ta:focus{border-color:#ffd93d}
+.modal-save{margin-top:12px;padding:11px 22px;border:none;border-radius:10px;cursor:pointer;font-family:var(--font-b);font-size:.88rem;font-weight:600;background:linear-gradient(135deg,#ffd93d,#ff9f43);color:#1a1000;transition:all .2s;align-self:flex-end}
+.modal-save:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(255,217,61,.3)}
+
+/* date range modal */
+.range-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.range-field label{display:block;font-size:.73rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.range-field input[type=date]{width:100%;padding:10px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-m);font-size:.88rem;outline:none;transition:border-color .18s}
+.range-field input[type=date]:focus{border-color:var(--accent)}
+.range-field input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6)}
+.range-name-field{margin-bottom:18px}
+.range-name-field label{display:block;font-size:.73rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.range-name-field input{width:100%;padding:10px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-b);font-size:.92rem;outline:none;transition:border-color .18s}
+.range-name-field input:focus{border-color:var(--accent)}
+.range-apply{width:100%;padding:13px;border:none;border-radius:11px;cursor:pointer;font-family:var(--font-b);font-size:.95rem;font-weight:600;background:linear-gradient(135deg,#7c6dfa,#fa6d9f);color:#fff;transition:all .2s}
+.range-apply:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(124,109,250,.35)}
+.range-apply:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ─── TOAST ─── */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:11px 18px;font-size:.85rem;font-weight:500;color:var(--text);box-shadow:0 8px 28px rgba(0,0,0,.45);z-index:9999;animation:fadeUp .25s ease;max-width:300px}
+.toast.ok{border-color:rgba(109,250,188,.35);color:#a0f5cc}
+.toast.err{border-color:rgba(250,109,109,.35);color:#ffaaaa}
+
+/* ─── LOADING ─── */
+.loading{display:flex;align-items:center;justify-content:center;min-height:100vh;gap:14px;color:var(--text3);font-family:var(--font-m);font-size:.9rem}
+.spin{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+
+/* save indicator */
+.saving-ind{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 13px;font-size:.76rem;color:var(--text3);display:flex;align-items:center;gap:7px;z-index:900}
+
+/* ─── TIME FIELDS ─── */
+.time-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.time-row label{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);white-space:nowrap}
+.time-input{padding:7px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-m);font-size:.82rem;outline:none;transition:border-color .18s;width:120px}
+.time-input:focus{border-color:var(--accent)}
+.time-input::-webkit-calendar-picker-indicator{filter:invert(.5);cursor:pointer}
+.time-sep{color:var(--text3);font-size:.8rem;font-family:var(--font-m)}
+.time-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--font-m);font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(124,109,250,.13);color:#a89dfa;border:1px solid rgba(124,109,250,.22);margin-top:4px;white-space:nowrap}
+.time-badge.has-end{background:rgba(109,250,188,.1);color:#6dfabc;border-color:rgba(109,250,188,.22)}
+.cal-time{font-size:.6rem;font-family:var(--font-m);color:#a89dfa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback,useMemo} = React;
+
+// ── helpers ──────────────────────────────────────────────
+function dateKey(d){ return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}` }
+function p2(n){ return String(n).padStart(2,'0') }
+function parseDateLocal(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d) }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r }
+function generateDates(start,end){
+  const out=[]; let cur=new Date(start);
+  while(cur<=end){ out.push(new Date(cur)); cur=addDays(cur,1); }
+  return out;
+}
+const WDAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const WFULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const PALETTE=[
+  '#ff6b6b','#ff9f43','#ffd93d','#a9e34b','#6bcb77','#4cc9f0',
+  '#4d9de0','#7c6dfa','#e15fce','#fa6d9f','#f9c74f','#43aa8b',
+  '#90e0ef','#c77dff','#ff6b9d','#06d6a0','#ef476f','#ffd166',
+  '#118ab2','#073b4c','#e9c46a','#264653','#2a9d8f','#e76f51',
+];
+
+const TYPES=[
+  {id:'task',label:'Task',icon:'✓',color:'#6bcb77',bg:'rgba(107,203,119,.14)'},
+  {id:'note',label:'Note',icon:'≡',color:'#ffd93d',bg:'rgba(255,217,61,.14)'},
+  {id:'link',label:'Link',icon:'↗',color:'#4d9de0',bg:'rgba(77,157,224,.14)'},
+  {id:'reminder',label:'Remind',icon:'◎',color:'#ff9f43',bg:'rgba(255,159,67,.14)'},
+  {id:'idea',label:'Idea',icon:'◆',color:'#e15fce',bg:'rgba(225,95,206,.14)'},
+  {id:'event',label:'Event',icon:'★',color:'#ff6b6b',bg:'rgba(255,107,107,.14)'},
+];
+
+// ── Firebase ──────────────────────────────────────────────
+function getFb(){ return window.__firebase||null }
+function getConfig(){
+  if(window.__FIREBASE_CONFIG) return window.__FIREBASE_CONFIG;
+  return {
+    apiKey:"YOUR_API_KEY",
+    authDomain:"YOUR_PROJECT.firebaseapp.com",
+    projectId:"YOUR_PROJECT_ID",
+    storageBucket:"YOUR_PROJECT.appspot.com",
+    messagingSenderId:"YOUR_SENDER_ID",
+    appId:"YOUR_APP_ID"
+  };
+}
+function ensureFirebase(){
+  if(window.__fbApp) return;
+  const fb=getFb(); if(!fb) return;
+  window.__fbApp=fb.initializeApp(getConfig());
+  window.__fbAuth=fb.getAuth(window.__fbApp);
+  window.__fbDb=fb.getFirestore(window.__fbApp);
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function Toast({msg,type,onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,2400);return()=>clearTimeout(t)},[]);
+  return <div className={`toast ${type}`}>{msg}</div>;
+}
+
+// ── Auth ──────────────────────────────────────────────────
+function AuthScreen({onAuth}){
+  const [tab,setTab]=useState('login');
+  const [name,setName]=useState('');
+  const [email,setEmail]=useState('');
+  const [pass,setPass]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState('');
+
+  async function submit(){
+    const fb=getFb(); if(!fb){setErr('Firebase not loaded.');return;}
+    setErr(''); setLoading(true);
+    try{
+      ensureFirebase();
+      if(tab==='signup'){
+        const c=await fb.createUserWithEmailAndPassword(window.__fbAuth,email,pass);
+        await fb.updateProfile(c.user,{displayName:name||email.split('@')[0]});
+        onAuth(c.user);
+      } else {
+        const c=await fb.signInWithEmailAndPassword(window.__fbAuth,email,pass);
+        onAuth(c.user);
+      }
+    }catch(e){ setErr(e.message.replace('Firebase: ','').replace(/\(auth[^)]*\)/,'').trim()) }
+    setLoading(false);
+  }
+
+  return (
+    <div className="auth-wrap">
+      <div className="auth-orb" style={{width:500,height:500,background:'radial-gradient(circle,rgba(124,109,250,.12),transparent 70%)',top:-100,left:-100}}/>
+      <div className="auth-orb" style={{width:400,height:400,background:'radial-gradient(circle,rgba(250,109,159,.1),transparent 70%)',bottom:-80,right:-80}}/>
+      <div className="auth-card">
+        <div className="auth-logo">✦ Plan Kar </div>
+        <div className="auth-sub">Your beautiful event planner</div>
+        <div className="auth-tabs">
+          <button className={`auth-tab${tab==='login'?' on':''}`} onClick={()=>setTab('login')}>Sign In</button>
+          <button className={`auth-tab${tab==='signup'?' on':''}`} onClick={()=>setTab('signup')}>Create Account</button>
+        </div>
+        {err&&<div className="auth-err">⚠ {err}</div>}
+        {tab==='signup'&&<div className="auth-f"><label>Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"/></div>}
+        <div className="auth-f"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></div>
+        <div className="auth-f"><label>Password</label><input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+        <button className="auth-btn" onClick={submit} disabled={loading}>{loading?'…':tab==='login'?'Sign In →':'Create Account →'}</button>
+        <div className="setup-note">
+          <h4>⚡ Firebase Setup</h4>
+          <p>Add your keys to <code style={{color:'#ffd93d'}}>config.js</code> (see instructions). Enable Email/Password Auth and Firestore at <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a>.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Color Picker ──────────────────────────────────────────
+function ColorPop({current,onPick,onClose}){
+  const ref=useRef();
+  useEffect(()=>{
+    function handle(e){if(ref.current&&!ref.current.contains(e.target))onClose()}
+    document.addEventListener('mousedown',handle);
+    return()=>document.removeEventListener('mousedown',handle);
+  },[]);
+  return (
+    <div className="color-pop" ref={ref} onClick={e=>e.stopPropagation()}>
+      {PALETTE.map(c=>(
+        <div key={c} className={`color-swatch${c===current?' picked':''}`}
+          style={{background:c}} onClick={()=>onPick(c)} title={c}/>
+      ))}
+    </div>
+  );
+}
+
+// ── helpers ─ time formatting ─────────────────────────────
+function fmt12(t){ // "14:30" → "2:30 PM"
+  if(!t) return '';
+  const [h,m]=t.split(':').map(Number);
+  const ampm=h>=12?'PM':'AM';
+  const hh=h%12||12;
+  return `${hh}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+function timeLabel(startTime,endTime){
+  if(!startTime&&!endTime) return null;
+  if(startTime&&endTime) return `${fmt12(startTime)} – ${fmt12(endTime)}`;
+  if(startTime) return `From ${fmt12(startTime)}`;
+  return `Until ${fmt12(endTime)}`;
+}
+
+// ── Entry Card ────────────────────────────────────────────
+function EntryCard({entry,onSave,onDelete}){
+  const [editing,setEditing]=useState(false);
+  const [editText,setEditText]=useState(entry.text);
+  const [editLink,setEditLink]=useState(entry.link||'');
+  const [editStart,setEditStart]=useState(entry.startTime||'');
+  const [editEnd,setEditEnd]=useState(entry.endTime||'');
+  const tp=TYPES.find(t=>t.id===entry.type)||TYPES[1];
+  function save(){onSave(entry.id,{text:editText,link:editLink,startTime:editStart,endTime:editEnd});setEditing(false);}
+  function linkify(text){
+    const re=/(https?:\/\/[^\s]+)/g;
+    return text.split(re).map((p,i)=>re.test(p)?<a key={i} href={p} target="_blank" rel="noopener noreferrer">{p}</a>:p);
+  }
+  const tl=timeLabel(entry.startTime,entry.endTime);
+  const hasEnd=!!(entry.startTime&&entry.endTime);
+  return (
+    <div className="entry-card">
+      <div style={{position:'absolute',left:0,top:0,bottom:0,width:3,background:tp.color,borderRadius:'3px 0 0 3px'}}/>
+      <div className="entry-icon" style={{background:tp.bg,color:tp.color}}>{tp.icon}</div>
+      <div className="entry-body">
+        {editing?(
+          <>
+            <input className="edit-input" value={editText} onChange={e=>setEditText(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&save()} autoFocus/>
+            {entry.type==='link'&&<input className="edit-input" value={editLink}
+              onChange={e=>setEditLink(e.target.value)} placeholder="https://..." style={{marginTop:4}}/>}
+            <div className="time-row" style={{marginTop:8}}>
+              <label>Start</label>
+              <input type="time" className="time-input" value={editStart} onChange={e=>setEditStart(e.target.value)}/>
+              <span className="time-sep">→</span>
+              <label>End</label>
+              <input type="time" className="time-input" value={editEnd} onChange={e=>setEditEnd(e.target.value)}/>
+            </div>
+            <div className="edit-btns" style={{marginTop:8}}>
+              <button className="edit-save" onClick={save}>Save</button>
+              <button className="edit-cancel" onClick={()=>setEditing(false)}>Cancel</button>
+            </div>
+          </>
+        ):(
+          <>
+            <div className="entry-text">{linkify(entry.text)}</div>
+            {entry.link&&<a className="entry-link-pill" href={entry.link} target="_blank" rel="noopener noreferrer">
+              ↗ {entry.link.replace(/^https?:\/\//,'').split('/')[0]}
+            </a>}
+            {tl&&<div className={`time-badge${hasEnd?' has-end':''}`}>◷ {tl}</div>}
+            <div className="entry-meta">{tp.label} · added {entry.time}</div>
+          </>
+        )}
+      </div>
+      <div className="entry-actions">
+        <button className="ea-btn" onClick={()=>setEditing(!editing)} title="Edit">✏</button>
+        <button className="ea-btn del" onClick={()=>onDelete(entry.id)} title="Delete">✕</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Notes Modal ───────────────────────────────────────────
+function NotesModal({notes,onSave,onClose}){
+  const [text,setText]=useState(notes||'');
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-hd">
+          <div className="modal-title">📔 Overall Notes</div>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <textarea className="notes-ta" value={text} onChange={e=>setText(e.target.value)}
+          placeholder="Your event notes, checklist, ideas, goals…&#10;&#10;This is your creative space."/>
+        <button className="modal-save" onClick={()=>{onSave(text);onClose();}}>Save Notes ✓</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Range Modal ───────────────────────────────────────────
+function RangeModal({current,onApply,onClose}){
+  const fmt=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+  const [startStr,setStartStr]=useState(fmt(current.start));
+  const [endStr,setEndStr]=useState(fmt(current.end));
+  const [evName,setEvName]=useState(current.name||'');
+
+  const valid=useMemo(()=>{
+    if(!startStr||!endStr) return false;
+    const s=parseDateLocal(startStr), e=parseDateLocal(endStr);
+    return s<=e && (e-s)/(86400000)<=365;
+  },[startStr,endStr]);
+
+  function apply(){
+    if(!valid) return;
+    onApply({start:parseDateLocal(startStr),end:parseDateLocal(endStr),name:evName});
+    onClose();
+  }
+
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal modal-sm">
+        <div className="modal-hd">
+          <div className="modal-title">📅 Set Event Dates</div>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="range-name-field">
+          <label>Event Name</label>
+          <input value={evName} onChange={e=>setEvName(e.target.value)} placeholder="My Awesome Event"/>
+        </div>
+        <div className="range-fields">
+          <div className="range-field"><label>Start Date</label>
+            <input type="date" value={startStr} onChange={e=>setStartStr(e.target.value)}/></div>
+          <div className="range-field"><label>End Date</label>
+            <input type="date" value={endStr} onChange={e=>setEndStr(e.target.value)}/></div>
+        </div>
+        {!valid&&startStr&&endStr&&<div style={{fontSize:'.78rem',color:'#fa9f6d',marginBottom:12}}>⚠ End must be after start, max 365 days</div>}
+        <button className="range-apply" onClick={apply} disabled={!valid}>Apply Dates →</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Calendar View ─────────────────────────────────────────
+function CalendarView({dates,entries,dayColors,onDayClick,onColorChange,onEditRange,eventName}){
+  const [colorPickDay,setColorPickDay]=useState(null);
+
+  // group dates by month
+  const byMonth=useMemo(()=>{
+    const map={};
+    dates.forEach(d=>{
+      const key=`${d.getFullYear()}-${d.getMonth()}`;
+      if(!map[key]) map[key]={year:d.getFullYear(),month:d.getMonth(),dates:[]};
+      map[key].dates.push(d);
+    });
+    return Object.values(map);
+  },[dates]);
+
+  const dateSet=useMemo(()=>new Set(dates.map(dateKey)),[dates]);
+
+  function buildMonthGrid(year,month,inDates){
+    const first=new Date(year,month,1);
+    const last=new Date(year,month+1,0);
+    const cells=[];
+    // leading blanks
+    for(let i=0;i<first.getDay();i++) cells.push({blank:true,key:'b'+i});
+    // all days in month
+    for(let d=1;d<=last.getDate();d++){
+      const date=new Date(year,month,d);
+      const dk=dateKey(date);
+      const inRange=dateSet.has(dk);
+      cells.push({blank:false,date,dk,inRange});
+    }
+    return cells;
+  }
+
+  return (
+    <div className="cal-view">
+      <div className="cal-header">
+        <div>
+          <div className="cal-title">{eventName}<span>Calendar</span></div>
+          <div style={{fontSize:'.78rem',color:'var(--text3)',fontFamily:'var(--font-m)',marginTop:3}}>
+            {MONTHS_S[dates[0]?.getMonth()]} {dates[0]?.getDate()} – {MONTHS_S[dates[dates.length-1]?.getMonth()]} {dates[dates.length-1]?.getDate()}, {dates[0]?.getFullYear()} · {dates.length} days
+          </div>
+        </div>
+        <div className="cal-controls">
+          <button className="cal-icon-btn" onClick={onEditRange}>⚙ Edit Dates</button>
+        </div>
+      </div>
+
+      {byMonth.map(({year,month,dates:mDates})=>{
+        const cells=buildMonthGrid(year,month,mDates);
+        return (
+          <div key={`${year}-${month}`}>
+            <div className="cal-month-label">{MONTHS[month]} {year}</div>
+            <div className="cal-grid">
+              {WDAYS.map(w=><div key={w} className="cal-weekday">{w}</div>)}
+              {cells.map((cell,ci)=>{
+                if(cell.blank) return <div key={cell.key} className="cal-cell empty"/>;
+                const {date,dk,inRange}=cell;
+                const color=dayColors[dk]||'#7c6dfa';
+                const dayEntries=entries[dk]||[];
+                const count=dayEntries.length;
+                return (
+                  <div key={dk}
+                    className={`cal-cell${inRange?' in-range':''}`}
+                    style={inRange?{background:`${color}18`,borderColor:`${color}40`}:{}}
+                    onClick={()=>inRange&&onDayClick(date)}
+                  >
+                    <div className="cal-cell-top">
+                      <span className="cal-day-num">{date.getDate()}</span>
+                      {inRange&&(
+                        <div style={{position:'relative'}} onClick={e=>e.stopPropagation()}>
+                          <div className="cal-color-dot" style={{background:color,'--dot-color':color}}
+                            onClick={e=>{e.stopPropagation();setColorPickDay(colorPickDay===dk?null:dk)}}/>
+                          {colorPickDay===dk&&<ColorPop current={color}
+                            onPick={c=>{onColorChange(dk,c);setColorPickDay(null)}}
+                            onClose={()=>setColorPickDay(null)}/>}
+                        </div>
+                      )}
+                    </div>
+                    {inRange&&count>0&&(
+                      <div className="cal-entry-chips">
+                        {dayEntries.slice(0,2).map(e=>{
+                          const tp=TYPES.find(t=>t.id===e.type)||TYPES[1];
+                          const tl=timeLabel(e.startTime,e.endTime);
+                          return (
+                            <div key={e.id}>
+                              <div className="cal-chip" style={{background:tp.bg,color:tp.color}}>{tp.icon} {e.text}</div>
+                              {tl&&<div className="cal-time">◷ {tl}</div>}
+                            </div>
+                          );
+                        })}
+                        {count>2&&<div className="cal-more">+{count-2} more</div>}
+                      </div>
+                    )}
+                    {!inRange&&<div className="out-range-label">outside range</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Day View ──────────────────────────────────────────────
+function DayView({date,dates,entries,dayColor,onBack,onAddEntry,onUpdateEntry,onDeleteEntry,onChangeColor}){
+  const [type,setType]=useState('task');
+  const [text,setText]=useState('');
+  const [link,setLink]=useState('');
+  const [startTime,setStartTime]=useState('');
+  const [endTime,setEndTime]=useState('');
+  const [showLink,setShowLink]=useState(false);
+  const [showColorPop,setShowColorPop]=useState(false);
+  const dk=dateKey(date);
+  const dayEntries=entries[dk]||[];
+  const idx=dates.findIndex(d=>dateKey(d)===dk);
+  const color=dayColor||'#7c6dfa';
+
+  function add(){
+    if(!text.trim()) return;
+    const now=new Date();
+    onAddEntry(dk,{
+      id:Date.now().toString(),type,text:text.trim(),
+      link:type==='link'?link.trim():'',
+      startTime:startTime||'',
+      endTime:endTime||'',
+      time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+      createdAt:Date.now()
+    });
+    setText(''); setLink(''); setStartTime(''); setEndTime(''); setShowLink(false);
+  }
+
+  return (
+    <div className="day-view">
+      <div className="dv-header">
+        <button className="dv-back" onClick={onBack}>← Calendar</button>
+        <div className="dv-title-area" style={{flex:1,margin:'0 20px'}}>
+          <div className="dv-date" style={{color}}>{WFULL[date.getDay()]}, {MONTHS_S[date.getMonth()]} {date.getDate()}</div>
+          <div className="dv-sub">Day {idx+1} of {dates.length} · {date.getFullYear()}</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div style={{position:'relative'}}>
+            <div style={{width:22,height:22,borderRadius:'50%',background:color,cursor:'pointer',border:'2px solid rgba(255,255,255,.2)',transition:'transform .15s'}}
+              onClick={()=>setShowColorPop(!showColorPop)} title="Change day color"/>
+            {showColorPop&&<div style={{position:'absolute',right:0,top:28}}>
+              <ColorPop current={color} onPick={c=>{onChangeColor(dk,c);setShowColorPop(false)}} onClose={()=>setShowColorPop(false)}/>
+            </div>}
+          </div>
+          <div className="dv-num">{p2(date.getDate())}</div>
+        </div>
+      </div>
+
+      <div className="dv-colorbar" style={{background:`linear-gradient(90deg,${color},${color}44)`}}/>
+
+      <div className="add-bar">
+        <div className="type-row">
+          {TYPES.map(t=>(
+            <button key={t.id} className={`type-chip${type===t.id?' on':''}`}
+              style={type===t.id?{background:t.bg,color:t.color,borderColor:t.color}:{}}
+              onClick={()=>{setType(t.id);setShowLink(t.id==='link')}}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="input-row">
+          <input className="entry-input" value={text} onChange={e=>setText(e.target.value)}
+            placeholder={`Add a ${type}…`} onKeyDown={e=>e.key==='Enter'&&!e.shiftKey&&add()}/>
+          <button className="add-entry-btn" onClick={add}>Add +</button>
+        </div>
+        <div className="time-row">
+          <label>Start</label>
+          <input type="time" className="time-input" value={startTime} onChange={e=>setStartTime(e.target.value)}/>
+          <span className="time-sep">→</span>
+          <label>End</label>
+          <input type="time" className="time-input" value={endTime} onChange={e=>setEndTime(e.target.value)}/>
+          {(startTime||endTime)&&<span style={{fontSize:'.72rem',color:'var(--text3)',fontFamily:'var(--font-m)'}}>optional</span>}
+        </div>
+        {showLink&&<div className="link-extra">
+          <input className="link-input" value={link} onChange={e=>setLink(e.target.value)} placeholder="https://…"/>
+        </div>}
+      </div>
+
+      {dayEntries.length===0?(
+        <div className="empty">
+          <span className="empty-icon">✦</span>
+          <div className="empty-t">Nothing planned yet</div>
+          <div className="empty-s">Add tasks, notes, links, reminders or ideas above</div>
+        </div>
+      ):(
+        <div className="entries">
+          {dayEntries.map(e=>(
+            <EntryCard key={e.id} entry={e}
+              onSave={(id,ch)=>onUpdateEntry(dk,id,ch)}
+              onDelete={id=>onDeleteEntry(dk,id)}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Root App ──────────────────────────────────────────────
+function App(){
+  const [user,setUser]=useState(null);
+  const [authChecked,setAuthChecked]=useState(false);
+  const [view,setView]=useState('calendar'); // 'calendar' | 'day'
+  const [activeDate,setActiveDate]=useState(null);
+  const [eventName,setEventName]=useState('My August Event');
+  const [editingName,setEditingName]=useState(false);
+  const [dateRange,setDateRange]=useState({start:new Date(2025,7,4),end:new Date(2025,7,25)});
+  const [entries,setEntries]=useState({});
+  const [dayColors,setDayColors]=useState({});
+  const [overallNotes,setOverallNotes]=useState('');
+  const [showNotes,setShowNotes]=useState(false);
+  const [showRangeModal,setShowRangeModal]=useState(false);
+  const [toast,setToast]=useState(null);
+  const [saving,setSaving]=useState(false);
+  const saveTimer=useRef(null);
+
+  const dates=useMemo(()=>generateDates(dateRange.start,dateRange.end),[dateRange]);
+
+  // Auth listener
+  useEffect(()=>{
+    const fb=getFb();
+    if(!fb){setAuthChecked(true);return;}
+    ensureFirebase();
+    const unsub=fb.onAuthStateChanged(window.__fbAuth,u=>{setUser(u);setAuthChecked(true);});
+    return unsub;
+  },[]);
+
+  // Load data
+  useEffect(()=>{
+    if(!user) return;
+    const fb=getFb(); if(!fb||!window.__fbDb) return;
+    fb.getDoc(fb.doc(window.__fbDb,'eventplans',user.uid)).then(snap=>{
+      if(snap.exists()){
+        const d=snap.data();
+        if(d.eventName) setEventName(d.eventName);
+        if(d.entries) setEntries(d.entries);
+        if(d.dayColors) setDayColors(d.dayColors);
+        if(d.overallNotes) setOverallNotes(d.overallNotes);
+        if(d.dateRange) setDateRange({
+          start:parseDateLocal(d.dateRange.start),
+          end:parseDateLocal(d.dateRange.end)
+        });
+      }
+    });
+  },[user]);
+
+  // Debounced save
+  const scheduleSave=useCallback((patch)=>{
+    if(saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(async()=>{
+      const fb=getFb(); if(!fb||!window.__fbDb||!user) return;
+      setSaving(true);
+      try{
+        await fb.setDoc(fb.doc(window.__fbDb,'eventplans',user.uid),{
+          eventName:patch.eventName??eventName,
+          entries:patch.entries??entries,
+          dayColors:patch.dayColors??dayColors,
+          overallNotes:patch.overallNotes??overallNotes,
+          dateRange:{
+            start:dateKey(patch.dateRange?.start??dateRange.start),
+            end:dateKey(patch.dateRange?.end??dateRange.end)
+          },
+          updatedAt:fb.serverTimestamp()
+        },{merge:false});
+      }catch(e){showToast('Save failed','err');}
+      setSaving(false);
+    },900);
+  },[user,eventName,entries,dayColors,overallNotes,dateRange]);
+
+  function showToast(msg,type='ok'){setToast({msg,type,id:Date.now()})}
+
+  function addEntry(dk,entry){
+    const upd={...entries,[dk]:[...(entries[dk]||[]),entry]};
+    setEntries(upd); scheduleSave({entries:upd}); showToast('Entry added');
+  }
+  function updateEntry(dk,id,changes){
+    const upd={...entries,[dk]:(entries[dk]||[]).map(e=>e.id===id?{...e,...changes}:e)};
+    setEntries(upd); scheduleSave({entries:upd}); showToast('Entry updated');
+  }
+  function deleteEntry(dk,id){
+    const upd={...entries,[dk]:(entries[dk]||[]).filter(e=>e.id!==id)};
+    setEntries(upd); scheduleSave({entries:upd}); showToast('Deleted','err');
+  }
+  function changeColor(dk,c){
+    const upd={...dayColors,[dk]:c};
+    setDayColors(upd); scheduleSave({dayColors:upd});
+  }
+  function saveNotes(text){
+    setOverallNotes(text); scheduleSave({overallNotes:text}); showToast('Notes saved');
+  }
+  function applyRange({start,end,name}){
+    setDateRange({start,end});
+    if(name) setEventName(name);
+    scheduleSave({dateRange:{start,end},eventName:name||eventName});
+    showToast('Date range updated');
+  }
+  function saveEventName(v){
+    setEventName(v); setEditingName(false); scheduleSave({eventName:v}); showToast('Saved');
+  }
+  function logout(){
+    const fb=getFb(); if(fb&&window.__fbAuth) fb.signOut(window.__fbAuth);
+    setUser(null);
+  }
+
+  if(!authChecked) return <div className="loading"><div className="spin"/> Loading…</div>;
+  if(!user) return <AuthScreen onAuth={setUser}/>;
+
+  const initial=(user.displayName||user.email||'U')[0].toUpperCase();
+
+  // sidebar date items
+  function sidebarItems(){
+    return dates.map((d,i)=>{
+      const dk=dateKey(d);
+      const c=dayColors[dk]||PALETTE[i%PALETTE.length];
+      const cnt=(entries[dk]||[]).length;
+      const isActive=view==='day'&&activeDate&&dateKey(activeDate)===dk;
+      return (
+        <div key={dk} className={`sb-item${isActive?' active':''}`}
+          style={{'--dot-color':c}}
+          onClick={()=>{setActiveDate(d);setView('day')}}>
+          <div className="sb-dot" style={{background:c}}/>
+          <span className="sb-item-label">{MONTHS_S[d.getMonth()]} {d.getDate()} · {WDAYS[d.getDay()]}</span>
+          {cnt>0&&<span className="sb-count">{cnt}</span>}
+        </div>
+      );
+    });
+  }
+
+  return (
+    <div className="app">
+      {/* SIDEBAR */}
+      <aside className="sidebar">
+        <div className="sb-top">
+          <div className="sb-logo">✦ Plan Kar </div>
+          {editingName?(
+            <input className="sb-name-input" defaultValue={eventName}
+              onBlur={e=>saveEventName(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&saveEventName(e.target.value)} autoFocus/>
+          ):(
+            <div className="sb-event-name" onClick={()=>setEditingName(true)}>
+              {eventName} <span className="edit-hint">✏</span>
+            </div>
+          )}
+          <div className="sb-dates-label">
+            {MONTHS_S[dateRange.start.getMonth()]} {dateRange.start.getDate()} – {MONTHS_S[dateRange.end.getMonth()]} {dateRange.end.getDate()}, {dateRange.start.getFullYear()}
+          </div>
+        </div>
+
+        <div className="sb-nav-label">{dates.length} Days</div>
+        <nav className="sb-nav">{sidebarItems()}</nav>
+
+        <div className="sb-bottom">
+          <div className="sb-user">
+            <div className="sb-avatar">{initial}</div>
+            <div className="sb-uname">{user.displayName||user.email}</div>
+          </div>
+          <button className="sb-btn cal" onClick={()=>setView('calendar')}>⊞ Calendar View</button>
+          <button className="sb-btn notes" onClick={()=>setShowNotes(true)}>📔 Overall Notes</button>
+          <button className="sb-btn" onClick={()=>setShowRangeModal(true)}>📅 Edit Dates</button>
+          <button className="sb-btn logout" onClick={logout}>← Sign Out</button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT */}
+      <main className="main">
+        {view==='calendar'?(
+          <CalendarView
+            dates={dates} entries={entries} dayColors={dayColors}
+            eventName={eventName}
+            onDayClick={d=>{setActiveDate(d);setView('day')}}
+            onColorChange={changeColor}
+            onEditRange={()=>setShowRangeModal(true)}
+          />
+        ):(
+          activeDate&&<DayView
+            date={activeDate} dates={dates}
+            entries={entries}
+            dayColor={dayColors[dateKey(activeDate)]||(PALETTE[dates.findIndex(d=>dateKey(d)===dateKey(activeDate))%PALETTE.length])}
+            onBack={()=>setView('calendar')}
+            onAddEntry={addEntry}
+            onUpdateEntry={updateEntry}
+            onDeleteEntry={deleteEntry}
+            onChangeColor={changeColor}
+          />
+        )}
+      </main>
+
+      {/* MODALS */}
+      {showNotes&&<NotesModal notes={overallNotes} onSave={saveNotes} onClose={()=>setShowNotes(false)}/>}
+      {showRangeModal&&<RangeModal
+        current={{start:dateRange.start,end:dateRange.end,name:eventName}}
+        onApply={applyRange} onClose={()=>setShowRangeModal(false)}/>}
+
+      {toast&&<Toast key={toast.id} msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
+      {saving&&<div className="saving-ind"><div className="spin" style={{width:12,height:12}}/> Saving…</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
