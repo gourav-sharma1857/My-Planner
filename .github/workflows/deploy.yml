@@ -22,7 +22,7 @@ jobs:
 
       - name: Inject Secret Keys into config.js
         run: |
-          echo "${{ secrets.FIREBASE_CONFIG_DATA }}" > config.js
+          echo "window.__FIREBASE_SECRET_DATA = ${{ secrets.FIREBASE_CONFIG_DATA }};" > config.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
