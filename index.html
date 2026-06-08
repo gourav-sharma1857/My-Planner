@@ -350,10 +350,7 @@ function AuthScreen({onAuth}){
         <div className="auth-f"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></div>
         <div className="auth-f"><label>Password</label><input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
         <button className="auth-btn" onClick={submit} disabled={loading}>{loading?'…':tab==='login'?'Sign In →':'Create Account →'}</button>
-        <div className="setup-note">
-          <h4>⚡ Firebase Setup</h4>
-          <p>Add your keys to <code style={{color:'#ffd93d'}}>config.js</code> (see instructions). Enable Email/Password Auth and Firestore at <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a>.</p>
-        </div>
+        
       </div>
     </div>
   );
